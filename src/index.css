@@ -1,0 +1,170 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    border-color: #1e232e;
+  }
+  
+  /* Custom sleek dark scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0a0b0e;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a303f;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3c4559;
+  }
+}
+
+/* Glassmorphism panel */
+.glass-panel {
+  background: rgba(19, 22, 29, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-glow {
+  background: rgba(19, 22, 29, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  box-shadow: 0 0 25px rgba(0, 210, 255, 0.1);
+}
+
+/* Grok Neon Glows */
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 210, 255, 0.35);
+}
+
+.glow-orange {
+  box-shadow: 0 0 20px rgba(255, 107, 53, 0.35);
+}
+
+.glow-purple {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.35);
+}
+
+/* Markdown rendered content styles */
+.markdown-body {
+  color: #e2e8f0;
+  font-size: 0.95rem;
+  line-height: 1.65;
+  user-select: text;
+}
+
+.markdown-body p {
+  margin-bottom: 0.85rem;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-body h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f8fafc;
+  margin-top: 1.1rem;
+  margin-bottom: 0.6rem;
+}
+
+.markdown-body h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin-top: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-body ul {
+  list-style-type: disc;
+  padding-left: 1.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.markdown-body ol {
+  list-style-type: decimal;
+  padding-left: 1.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.markdown-body li {
+  margin-bottom: 0.35rem;
+}
+
+.markdown-body strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.markdown-body code:not(pre code) {
+  background: #181c25;
+  color: #38bdf8;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.35rem;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.85em;
+  border: 1px solid #2a303f;
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid #00d2ff;
+  padding-left: 1rem;
+  color: #94a3b8;
+  font-style: italic;
+  margin: 0.75rem 0;
+}
+
+.markdown-body hr {
+  border: 0;
+  border-top: 1px solid #2a303f;
+  margin: 1.25rem 0;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+
+.markdown-body th, .markdown-body td {
+  border: 1px solid #2a303f;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.markdown-body th {
+  background: #181c25;
+  color: #f1f5f9;
+}
+
+.markdown-body tr:nth-child(even) {
+  background: rgba(24, 28, 37, 0.4);
+}
+
+/* Pulsing audio wave bars */
+@keyframes soundwave {
+  0%, 100% { height: 4px; }
+  50% { height: 24px; }
+}
+
+.audio-bar {
+  animation: soundwave 1s ease-in-out infinite;
+}
