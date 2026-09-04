@@ -4,12 +4,14 @@ import axios from 'axios';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import vm from 'vm';
+import fs from 'fs';
+import http from 'http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 3000;
 
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '20mb' }));
@@ -172,7 +174,6 @@ app.post('/api/execute-code', async (req, res) => {
       });
     }
   } else if (language === 'python' || language === 'py') {
-    // Simulated lightweight python execution response
     return res.json({
       success: true,
       output: `[Python 3.11 Runtime Simulation]\nCode parsed successfully.\nRun within local Python environment or WebAssembly engine.\nExecution preview:\n${code.split('\n').map(l => '>>> ' + l).join('\n')}`,
@@ -307,7 +308,6 @@ app.post('/api/chat', async (req, res) => {
     }
 
     if (provider === 'anthropic') {
-      // Convert OpenAI messages to Anthropic format
       const systemMessage = messages.find(m => m.role === 'system')?.content || '';
       const userAssistantMessages = messages.filter(m => m.role !== 'system');
 
@@ -333,7 +333,6 @@ app.post('/api/chat', async (req, res) => {
         }
       );
 
-      // Convert response to standard OpenAI format
       const contentText = response.data.content?.map(c => c.text).join('') || '';
       return res.json({
         choices: [{
@@ -415,7 +414,7 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Intelligent Demo Chat Generator (Simulates Grok Persona Modes with sharp responses)
+// Intelligent Demo Chat Generator
 function handleDemoChat(messages, res, options) {
   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content || '';
   const mode = options.mode || 'fun';
@@ -464,15 +463,53 @@ function handleDemoChat(messages, res, options) {
 }
 
 // Serve static frontend build if present
-app.use(express.static(path.join(__dirname, '../dist')));
+const distPath = path.join(__dirname, '../dist');
+app.use(express.static(distPath));
 
-// Fallback to index.html for SPA routing
+// Fallback for SPA routing with check
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+    const indexPath = path.join(distPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(200).send(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>GrokPulse Desktop - Build Required</title><style>body{background:#0a0b0e;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}div{background:#13161d;padding:30px;border-radius:16px;border:1px solid #2a303f;text-align:center;max-width:450px;}code{background:#0a0b0e;padding:4px 8px;border-radius:6px;color:#00d2ff;}</style></head>
+        <body>
+          <div>
+            <h2>⚡ GrokPulse Desktop Initializing</h2>
+            <p style="color:#94a3b8">The frontend assets are not compiled yet.</p>
+            <p>Please run: <code>npm run build</code> in your terminal, then refresh this page!</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`⚡ GrokPulse Desktop Server running on http://0.0.0.0:${PORT}`);
-});
+// Helper function to start server on available port
+function startServer(port, maxAttempts = 10) {
+  const server = http.createServer(app);
+
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`⚡ GrokPulse Desktop Server running on http://localhost:${port}`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`⚠️ Port ${port} is already in use. Trying port ${port + 1}...`);
+      if (maxAttempts > 0) {
+        startServer(port + 1, maxAttempts - 1);
+      } else {
+        console.error('❌ Could not find an open port. Please free up port 3000 or set PORT=3005.');
+      }
+    } else {
+      console.error('Server error:', err);
+    }
+  });
+}
+
+startServer(DEFAULT_PORT);
