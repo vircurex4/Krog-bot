@@ -4,9 +4,7 @@ import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import SettingsModal from './components/SettingsModal';
 import CommandPalette from './components/CommandPalette';
-import ImageGeneratorModal from './components/ImageGeneratorModal';
 import ShortcutsModal from './components/ShortcutsModal';
-import ExportModal from './components/ExportModal';
 
 import { storageService } from './services/storageService';
 import { llmService } from './services/llmService';
@@ -19,7 +17,7 @@ export default function App() {
   const [chats, setChats] = useState(() => storageService.getChats());
   const [activeChatId, setActiveChatId] = useState(() => storageService.getActiveChatId());
   
-  const [activePersona, setActivePersona] = useState(settings.activePersona || 'fun');
+  const [activePersona, setActivePersona] = useState(settings.activePersona || 'normal');
   const [activeProvider, setActiveProvider] = useState(settings.activeProvider || 'demo');
   const [activeModel, setActiveModel] = useState(settings.activeModel || 'grok-demo-v1');
   const [deepSearchEnabled, setDeepSearchEnabled] = useState(settings.deepSearchEnabled || false);
@@ -31,14 +29,12 @@ export default function App() {
   // Modals state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  // Initialize or ensure active chat
+  // Initialize active chat
   useEffect(() => {
     if (chats.length === 0) {
-      const initialChat = storageService.createNewChat(activePersona, 'Welcome to GrokPulse');
+      const initialChat = storageService.createNewChat(activePersona, 'New Conversation');
       setChats([initialChat]);
       setActiveChatId(initialChat.id);
       storageService.saveChats([initialChat]);
@@ -49,22 +45,18 @@ export default function App() {
     }
   }, []);
 
-  // Save chats whenever they change
   useEffect(() => {
     if (chats.length > 0) {
       storageService.saveChats(chats);
     }
   }, [chats]);
 
-  // Save settings whenever they change
   useEffect(() => {
     storageService.saveSettings(settings);
   }, [settings]);
 
-  // Get current active chat
   const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
 
-  // Handle New Chat
   const handleNewChat = useCallback(() => {
     const newChat = storageService.createNewChat(activePersona, 'New Conversation');
     setChats(prev => [newChat, ...prev]);
@@ -72,7 +64,6 @@ export default function App() {
     storageService.saveActiveChatId(newChat.id);
   }, [activePersona]);
 
-  // Handle Delete Chat
   const handleDeleteChat = useCallback((chatId) => {
     setChats(prev => {
       const filtered = prev.filter(c => c.id !== chatId);
@@ -88,23 +79,19 @@ export default function App() {
     });
   }, [activeChatId, activePersona]);
 
-  // Handle Rename Chat
   const handleRenameChat = useCallback((chatId, newTitle) => {
     setChats(prev => prev.map(c => c.id === chatId ? { ...c, title: newTitle, updatedAt: new Date().toISOString() } : c));
   }, []);
 
-  // Handle Toggle Pin
   const handleTogglePin = useCallback((chatId) => {
     setChats(prev => prev.map(c => c.id === chatId ? { ...c, isPinned: !c.isPinned } : c));
   }, []);
 
-  // Handle Clear Messages in current chat
   const handleClearMessages = useCallback(() => {
     if (!activeChatId) return;
     setChats(prev => prev.map(c => c.id === activeChatId ? { ...c, messages: [], updatedAt: new Date().toISOString() } : c));
   }, [activeChatId]);
 
-  // Handle Send Message
   const handleSendMessage = async (text) => {
     if (!text.trim() || isLoading) return;
 
@@ -114,10 +101,8 @@ export default function App() {
       timestamp: new Date().toISOString()
     };
 
-    // Update active chat messages
     const updatedMessages = [...(activeChat?.messages || []), userMessage];
     
-    // Auto-update chat title if this is the first user message
     let updatedTitle = activeChat?.title || 'New Conversation';
     if (activeChat?.messages.length === 0) {
       updatedTitle = text.slice(0, 36) + (text.length > 36 ? '...' : '');
@@ -138,16 +123,14 @@ export default function App() {
       let searchContext = null;
       let searchSources = [];
 
-      // 1. Perform DeepSearch if enabled
       if (deepSearchEnabled) {
-        setSearchStatus(`Scanning live web sources for "${text.slice(0, 24)}..."`);
+        setSearchStatus(`Searching web for "${text.slice(0, 24)}..."`);
         const searchResults = await searchService.performDeepSearch(text, 4);
         searchContext = searchService.formatSearchResultsForPrompt(searchResults);
         searchSources = searchResults.results || [];
-        setSearchStatus(`Synthesizing ${searchSources.length} sources with Grok ${activePersona.toUpperCase()} engine...`);
+        setSearchStatus(`Synthesizing search results...`);
       }
 
-      // 2. Query LLM Service
       const assistantResponse = await llmService.sendMessage({
         messages: updatedMessages,
         activeProvider,
@@ -157,12 +140,10 @@ export default function App() {
         searchContext
       });
 
-      // 3. Attach search sources to assistant message if used
       if (searchSources.length > 0) {
         assistantResponse.searchSources = searchSources;
       }
 
-      // 4. Update chat with assistant reply
       setChats(prev => prev.map(c => c.id === activeChatId ? {
         ...c,
         updatedAt: new Date().toISOString(),
@@ -172,7 +153,7 @@ export default function App() {
       console.error('Chat error:', error);
       const errorMsg = {
         role: 'assistant',
-        content: `⚠️ **Grok Alert:** ${error.message}\n\n*Tip: Check your API key in **Settings (⚙️)** or switch to the free Grok Demo Simulator in the top-right model selector.*`,
+        content: `⚠️ Error: ${error.message}\n\nPlease check your API key in Settings (⚙️) or switch to Demo mode in the top model menu.`,
         persona: activePersona,
         timestamp: new Date().toISOString()
       };
@@ -188,7 +169,6 @@ export default function App() {
     }
   };
 
-  // Handle Regenerate
   const handleRegenerate = () => {
     if (!activeChat || activeChat.messages.length < 2 || isLoading) return;
     const messagesWithoutLastAssistant = [...activeChat.messages];
@@ -202,68 +182,34 @@ export default function App() {
     }
   };
 
-  // Cycle Persona Mode
-  const handleCyclePersona = useCallback(() => {
-    const currentIndex = GROK_PERSONAS.findIndex(p => p.id === activePersona);
-    const nextIndex = (currentIndex + 1) % GROK_PERSONAS.length;
-    const nextPersona = GROK_PERSONAS[nextIndex].id;
-    setActivePersona(nextPersona);
-    setSettings(prev => ({ ...prev, activePersona: nextPersona }));
-  }, [activePersona]);
-
-  // Global Keyboard Shortcuts Listener
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Ctrl/Cmd + K: Command Palette
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setIsCommandPaletteOpen(prev => !prev);
-      }
-      // Ctrl/Cmd + N: New Chat
-      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
         e.preventDefault();
         handleNewChat();
-      }
-      // Ctrl/Cmd + ,: Settings
-      else if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault();
         setIsSettingsOpen(prev => !prev);
-      }
-      // Ctrl/Cmd + D: Toggle DeepSearch
-      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
         e.preventDefault();
         setDeepSearchEnabled(prev => !prev);
-      }
-      // Ctrl/Cmd + M: Cycle Mode
-      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
-        e.preventDefault();
-        handleCyclePersona();
-      }
-      // Ctrl/Cmd + I: Imagine
-      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
-        e.preventDefault();
-        setIsImageModalOpen(prev => !prev);
-      }
-      // Ctrl + /: Shortcuts modal
-      else if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key === '/') {
         e.preventDefault();
         setIsShortcutsOpen(prev => !prev);
-      }
-      // Escape: Close active modals
-      else if (e.key === 'Escape') {
+      } else if (e.key === 'Escape') {
         setIsSettingsOpen(false);
         setIsCommandPaletteOpen(false);
-        setIsImageModalOpen(false);
         setIsShortcutsOpen(false);
-        setIsExportModalOpen(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNewChat, handleCyclePersona]);
+  }, [handleNewChat]);
 
-  // Provider Selection Handler
   const handleSelectProvider = (providerId) => {
     const prov = PROVIDERS.find(p => p.id === providerId) || PROVIDERS[0];
     setActiveProvider(providerId);
@@ -275,19 +221,16 @@ export default function App() {
     }));
   };
 
-  // Model Selection Handler
   const handleSelectModel = (modelId) => {
     setActiveModel(modelId);
     setSettings(prev => ({ ...prev, activeModel: modelId }));
   };
 
-  // Persona Selection Handler
   const handleSelectPersona = (personaId) => {
     setActivePersona(personaId);
     setSettings(prev => ({ ...prev, activePersona: personaId }));
   };
 
-  // Save Settings from Modal
   const handleSaveSettings = (newSettings) => {
     setSettings(newSettings);
     setActivePersona(newSettings.activePersona || activePersona);
@@ -295,18 +238,16 @@ export default function App() {
     setActiveModel(newSettings.activeModel || activeModel);
   };
 
-  // Clear All Data
   const handleClearAllData = () => {
     localStorage.clear();
-    const fresh = storageService.createNewChat('fun', 'Welcome to GrokPulse');
+    const fresh = storageService.createNewChat('normal', 'New Conversation');
     setChats([fresh]);
     setActiveChatId(fresh.id);
     setSettings(storageService.getSettings());
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-obsidian-950 text-slate-100 overflow-hidden font-sans">
-      {/* Desktop Frame / Window Titlebar */}
+    <div className="flex flex-col h-screen w-screen bg-arena-950 text-arena-100 overflow-hidden font-sans">
       <DesktopTitleBar
         activePersona={activePersona}
         activeProvider={activeProvider}
@@ -316,9 +257,9 @@ export default function App() {
         onOpenShortcuts={() => setIsShortcutsOpen(true)}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         sidebarOpen={sidebarOpen}
+        onNewChat={handleNewChat}
       />
 
-      {/* Main Workspace Area (Sidebar + Chat Area) */}
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
         <Sidebar
           chats={chats}
@@ -332,10 +273,6 @@ export default function App() {
           onRenameChat={handleRenameChat}
           onTogglePin={handleTogglePin}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenImageModal={() => setIsImageModalOpen(true)}
-          onOpenExportModal={() => setIsExportModalOpen(true)}
-          activePersona={activePersona}
-          onSelectPersona={handleSelectPersona}
           isOpen={sidebarOpen}
           onToggleOpen={() => setSidebarOpen(!sidebarOpen)}
         />
@@ -356,22 +293,25 @@ export default function App() {
           onSelectProvider={handleSelectProvider}
           onSelectModel={handleSelectModel}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenImageModal={() => setIsImageModalOpen(true)}
           deepSearchEnabled={deepSearchEnabled}
           onToggleDeepSearch={() => setDeepSearchEnabled(!deepSearchEnabled)}
-          sidebarOpen={sidebarOpen}
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         />
       </div>
 
-      {/* Modals & Dialogs */}
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         onSaveSettings={handleSaveSettings}
-        onExportData={() => storageService.exportAllData()}
-        onImportData={(json) => storageService.importData(json)}
+        onExportData={() => {
+          const data = storageService.exportAllData();
+          const blob = new Blob([data], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `arashmidos-backup-${Date.now()}.json`;
+          a.click();
+        }}
         onClearAllData={handleClearAllData}
       />
 
@@ -381,7 +321,6 @@ export default function App() {
         onNewChat={handleNewChat}
         onSelectPersona={handleSelectPersona}
         onToggleDeepSearch={() => setDeepSearchEnabled(prev => !prev)}
-        onOpenImageModal={() => setIsImageModalOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         chats={chats}
         onSelectChat={(id) => {
@@ -390,28 +329,9 @@ export default function App() {
         }}
       />
 
-      <ImageGeneratorModal
-        isOpen={isImageModalOpen}
-        onClose={() => setIsImageModalOpen(false)}
-      />
-
       <ShortcutsModal
         isOpen={isShortcutsOpen}
         onClose={() => setIsShortcutsOpen(false)}
-      />
-
-      <ExportModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        activeChat={activeChat}
-        onExportAll={() => storageService.exportAllData()}
-        onImportAll={(json) => {
-          const res = storageService.importData(json);
-          if (res.success) {
-            setChats(storageService.getChats());
-          }
-          return res;
-        }}
       />
     </div>
   );
